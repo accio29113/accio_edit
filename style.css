@@ -101,35 +101,6 @@ button {
   transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.2s ease;
 }
 
-.mode-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.mode-buttons button {
-  flex: 1;
-  font-size: 0.85rem;
-  padding: 6px 10px;
-}
-
-.mode-buttons button.active {
-  outline: 2px solid #ff9ec7;
-}
-
-.mosaic-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.mosaic-types label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-
 button:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 92, 143, 0.35);
@@ -169,7 +140,36 @@ button:active {
   color: #888;
 }
 
-/* スマホ向け */
+/* モードボタン・モザイクタイプ */
+.mode-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-buttons button {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+}
+
+.mode-buttons button.active {
+  outline: 2px solid #ff9ec7;
+}
+
+.mosaic-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.mosaic-types label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* スマホ向け：文字サイズは控えめな最初のやつに戻し */
 @media (max-width: 600px) {
   .container {
     padding: 8px;
@@ -183,4 +183,3 @@ button:active {
     font-size: 0.8rem;
   }
 }
-
