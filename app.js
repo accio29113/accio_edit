@@ -2,6 +2,7 @@ const imageInput = document.getElementById("imageInput");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+// フィルター関連
 const brightness = document.getElementById("brightness");
 const contrast = document.getElementById("contrast");
 const saturate = document.getElementById("saturate");
@@ -15,11 +16,27 @@ const saturateValue = document.getElementById("saturateValue");
 const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 
-let originalImage = null;   // 元画像データ
+// モザイク系
+const modeMosaic = document.getElementById("modeMosaic");
+const modeEraser = document.getElementById("modeEraser");
+const brushSize = document.getElementById("brushSize");
+const mosaicTypeInputs = document.querySelectorAll("input[name='mosaicType']");
+
+let originalImage = null;
 let baseWidth = 0;
 let baseHeight = 0;
 
-// 画像を読み込む
+// 元画像（フィルター適用後）を保持するオフスクリーンキャンバス
+const baseCanvas = document.createElement("canvas");
+const baseCtx = baseCanvas.getContext("2d");
+
+// 状態管理
+let currentMode = "mosaic";       // "mosaic" or "eraser"
+let currentMosaicType = "pixel";  // "pixel" | "glass" | "blur"
+let isDrawing = false;
+let hasMosaic = false;            // 一度でもモザイクを描いたら true
+
+// 画像読み込み
 imageInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -30,7 +47,6 @@ imageInput.addEventListener("change", (e) => {
     img.onload = function() {
       originalImage = img;
 
-      // キャンバスサイズを自動調整（最大幅 800px）
       const maxWidth = 800;
       const scale = img.width > maxWidth ? maxWidth / img.width : 1;
 
@@ -39,16 +55,20 @@ imageInput.addEventListener("change", (e) => {
 
       canvas.width = baseWidth;
       canvas.height = baseHeight;
+      baseCanvas.width = baseWidth;
+      baseCanvas.height = baseHeight;
 
+      hasMosaic = false;
+      unlockFilters();
       resetControls();
-      applyFilters(); // 初期状態で一回描画
+      applyFilters();
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 });
 
-// スライダー・チェックボックスが変わったらフィルター適用（スマホ対策で input + change）
+// スライダー・チェックボックス変更 → フィルター適用（スマホ対策で input + change）
 [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
   ["input", "change"].forEach(eventName => {
     input.addEventListener(eventName, () => {
@@ -58,18 +78,24 @@ imageInput.addEventListener("change", (e) => {
   });
 });
 
-// ラベルを更新
+// ラベル更新
 function updateLabels() {
   brightnessValue.textContent = `${brightness.value}%`;
   contrastValue.textContent = `${contrast.value}%`;
   saturateValue.textContent = `${saturate.value}%`;
 }
 
-// フィルターを適用して描画
+// フィルター適用
 function applyFilters() {
   if (!originalImage) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // モザイクを描き始めてからはフィルターをいじらない
+  if (hasMosaic) return;
+
+  canvas.width = baseWidth;
+  canvas.height = baseHeight;
+  baseCanvas.width = baseWidth;
+  baseCanvas.height = baseHeight;
 
   const filters = [
     `brightness(${brightness.value}%)`,
@@ -77,19 +103,26 @@ function applyFilters() {
     `saturate(${saturate.value}%)`
   ];
 
-  if (grayscale.checked) {
-    filters.push("grayscale(1)");
-  }
-  if (sepia.checked) {
-    filters.push("sepia(1)");
-  }
+  if (grayscale.checked) filters.push("grayscale(1)");
+  if (sepia.checked)     filters.push("sepia(1)");
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
 
   ctx.filter = filters.join(" ");
+  baseCtx.filter = filters.join(" ");
+
   ctx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
+  baseCtx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
+
+  ctx.filter = "none";
+  baseCtx.filter = "none";
 }
 
-// リセットボタン
+// リセット
 resetBtn.addEventListener("click", () => {
+  hasMosaic = false;
+  unlockFilters();
   resetControls();
   applyFilters();
 });
@@ -103,7 +136,19 @@ function resetControls() {
   updateLabels();
 }
 
-// ダウンロードボタン
+// フィルターロック／解除
+function lockFilters() {
+  [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
+    input.disabled = true;
+  });
+}
+function unlockFilters() {
+  [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
+    input.disabled = false;
+  });
+}
+
+// ダウンロード
 downloadBtn.addEventListener("click", () => {
   if (!originalImage) {
     alert("先に画像を読み込んでね！");
@@ -111,16 +156,13 @@ downloadBtn.addEventListener("click", () => {
   }
 
   const dataUrl = canvas.toDataURL("image/png");
-
   const ua = navigator.userAgent || "";
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
 
   if (isIOS) {
-    // iPhone / iPad は新しいタブで画像を開いて、そこから長押し保存してもらう
     window.open(dataUrl, "_blank");
     alert("画像が開いたら、長押しして『写真に追加』か『画像を保存』を選んでね！");
   } else {
-    // それ以外（Android / PC）は download 属性で普通にダウンロード
     const link = document.createElement("a");
     link.download = "edited-image.png";
     link.href = dataUrl;
@@ -133,3 +175,168 @@ downloadBtn.addEventListener("click", () => {
 // 初期ラベル
 updateLabels();
 
+//
+// ===== モザイク＆消しゴム =====
+//
+
+// モード切り替え
+modeMosaic.addEventListener("click", () => {
+  currentMode = "mosaic";
+  modeMosaic.classList.add("active");
+  modeEraser.classList.remove("active");
+});
+
+modeEraser.addEventListener("click", () => {
+  currentMode = "eraser";
+  modeEraser.classList.add("active");
+  modeMosaic.classList.remove("active");
+});
+
+// モザイク種類
+mosaicTypeInputs.forEach(radio => {
+  radio.addEventListener("change", () => {
+    if (radio.checked) {
+      currentMosaicType = radio.value;
+    }
+  });
+});
+
+// キャンバス座標に変換（マウス／タッチ共通）
+function getCanvasPos(evt) {
+  const rect = canvas.getBoundingClientRect();
+  let clientX, clientY;
+
+  if (evt.touches && evt.touches[0]) {
+    clientX = evt.touches[0].clientX;
+    clientY = evt.touches[0].clientY;
+  } else {
+    clientX = evt.clientX;
+    clientY = evt.clientY;
+  }
+
+  const x = (clientX - rect.left) * (canvas.width / rect.width);
+  const y = (clientY - rect.top) * (canvas.height / rect.height);
+  return { x, y };
+}
+
+let isDrawing = false;
+
+// 描画開始
+function startDraw(evt) {
+  if (!originalImage) return;
+  isDrawing = true;
+  const pos = getCanvasPos(evt);
+  paintAt(pos.x, pos.y);
+  evt.preventDefault();
+}
+
+// 描画中
+function moveDraw(evt) {
+  if (!isDrawing) return;
+  const pos = getCanvasPos(evt);
+  paintAt(pos.x, pos.y);
+  evt.preventDefault();
+}
+
+// 描画終了
+function endDraw(evt) {
+  isDrawing = false;
+  evt && evt.preventDefault();
+}
+
+// PC
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mousemove", moveDraw);
+window.addEventListener("mouseup", endDraw);
+canvas.addEventListener("mouseleave", endDraw);
+
+// スマホ
+canvas.addEventListener("touchstart", startDraw, { passive: false });
+canvas.addEventListener("touchmove", moveDraw, { passive: false });
+canvas.addEventListener("touchend", endDraw, { passive: false });
+canvas.addEventListener("touchcancel", endDraw, { passive: false });
+
+// 実際に塗る
+function paintAt(x, y) {
+  if (!originalImage) return;
+
+  hasMosaic = true;
+  lockFilters();
+
+  const size = parseInt(brushSize.value, 10);
+  const half = size / 2;
+
+  let sx = Math.floor(x - half);
+  let sy = Math.floor(y - half);
+  let sw = size;
+  let sh = size;
+
+  if (sx < 0) { sw += sx; sx = 0; }
+  if (sy < 0) { sh += sy; sy = 0; }
+  if (sx + sw > baseCanvas.width)  sw = baseCanvas.width - sx;
+  if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
+  if (sw <= 0 || sh <= 0) return;
+
+  if (currentMode === "eraser") {
+    // 元のフィルター済画像(baseCanvas)をそのまま戻す
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(baseCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    ctx.restore();
+    return;
+  }
+
+  // モザイク
+  if (currentMosaicType === "pixel") {
+    applyPixelMosaic(sx, sy, sw, sh);
+  } else if (currentMosaicType === "glass") {
+    applyBlurMosaic(x, y, size, 3);  // すりガラス：弱い
+  } else if (currentMosaicType === "blur") {
+    applyBlurMosaic(x, y, size, 8);  // ぼかし：強い
+  }
+}
+
+// ドット（ピクセル）モザイク
+function applyPixelMosaic(sx, sy, sw, sh) {
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+
+  const blockCount = 8; // 荒さ調整用（大きいほど細かい）
+  const w = Math.max(1, Math.round(blockCount));
+  const h = Math.max(1, Math.round(blockCount * (sh / sw)));
+
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+
+  tempCtx.imageSmoothingEnabled = false;
+  tempCtx.drawImage(baseCanvas, sx, sy, sw, sh, 0, 0, w, h);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(sx, sy, sw, sh);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tempCanvas, 0, 0, w, h, sx, sy, sw, sh);
+  ctx.restore();
+
+  ctx.imageSmoothingEnabled = true;
+}
+
+// すりガラス＆ぼかし（blurの強さだけ変える）
+function applyBlurMosaic(centerX, centerY, size, blurRadius) {
+  const radius = size / 2;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  ctx.filter = `blur(${blurRadius}px)`;
+  ctx.drawImage(baseCanvas, 0, 0, baseCanvas.width, baseCanvas.height,
+                0, 0, canvas.width, canvas.height);
+  ctx.filter = "none";
+
+  ctx.restore();
+}
