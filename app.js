@@ -48,11 +48,13 @@ imageInput.addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-// スライダー値が変わったらフィルター適用
+// スライダー・チェックボックスが変わったらフィルター適用（スマホ対策で input + change）
 [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
-  input.addEventListener("input", () => {
-    updateLabels();
-    applyFilters();
+  ["input", "change"].forEach(eventName => {
+    input.addEventListener(eventName, () => {
+      updateLabels();
+      applyFilters();
+    });
   });
 });
 
@@ -107,11 +109,27 @@ downloadBtn.addEventListener("click", () => {
     alert("先に画像を読み込んでね！");
     return;
   }
-  const link = document.createElement("a");
-  link.download = "edited-image.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+
+  const dataUrl = canvas.toDataURL("image/png");
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+  if (isIOS) {
+    // iPhone / iPad は新しいタブで画像を開いて、そこから長押し保存してもらう
+    window.open(dataUrl, "_blank");
+    alert("画像が開いたら、長押しして『写真に追加』か『画像を保存』を選んでね！");
+  } else {
+    // それ以外（Android / PC）は download 属性で普通にダウンロード
+    const link = document.createElement("a");
+    link.download = "edited-image.png";
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 });
 
 // 初期ラベル
 updateLabels();
+
