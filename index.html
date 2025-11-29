@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head:
+<head>
   <meta charset="UTF-8">
   <title>かんたん写真加工アプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,7 +48,7 @@
         </label>
       </div>
 
-      <!-- ★ 編集モード -->
+      <!-- 編集モード -->
       <div class="control-group">
         <label>編集モード</label>
         <div class="mode-buttons">
@@ -57,17 +57,18 @@
         </div>
       </div>
 
-      <!-- ★ モザイク種類 -->
+      <!-- モザイク種類（ON/OFF付き） -->
       <div class="control-group">
         <label>モザイクの種類</label>
         <div class="mosaic-types">
-          <label><input type="radio" name="mosaicType" value="pixel" checked> ドット</label>
+          <label><input type="radio" name="mosaicType" value="none" checked> モザイクなし</label>
+          <label><input type="radio" name="mosaicType" value="pixel"> ドット</label>
           <label><input type="radio" name="mosaicType" value="glass"> すりガラス</label>
           <label><input type="radio" name="mosaicType" value="blur"> ぼかし</label>
         </div>
       </div>
 
-      <!-- ★ ブラシサイズ -->
+      <!-- ブラシサイズ -->
       <div class="control-group">
         <label for="brushSize">ブラシの大きさ</label>
         <input type="range" id="brushSize" min="10" max="120" value="40">
@@ -81,7 +82,10 @@
 
     <section class="preview">
       <canvas id="canvas"></canvas>
-      <p class="hint">※ まず「写真をえらぶ」から画像を読み込んでね。<br>モザイクはドラッグ／なぞって塗れるよ。</p>
+      <p class="hint">
+        ※ まず「写真をえらぶ」から画像を読み込んでね。<br>
+        モザイクは「モザイク」「モザイクの種類」を選んで、画像の上をドラッグ／なぞって塗っていくよ。
+      </p>
     </section>
   </main>
 
