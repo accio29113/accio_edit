@@ -26,7 +26,7 @@ let originalImage = null;
 let baseWidth = 0;
 let baseHeight = 0;
 
-// フィルター適用後の「基準画像」を持っとくキャンバス
+// フィルター適用後の「基準画像」
 const baseCanvas = document.createElement("canvas");
 const baseCtx = baseCanvas.getContext("2d");
 
@@ -42,9 +42,9 @@ imageInput.addEventListener("change", (e) => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(ev) {
+  reader.onload = function (ev) {
     const img = new Image();
-    img.onload = function() {
+    img.onload = function () {
       originalImage = img;
 
       const maxWidth = 800;
@@ -69,8 +69,8 @@ imageInput.addEventListener("change", (e) => {
 });
 
 // フィルター操作（スマホ対策で input + change）
-[brightness, contrast, saturate, grayscale, sepia].forEach(input => {
-  ["input", "change"].forEach(eventName => {
+[brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
+  ["input", "change"].forEach((eventName) => {
     input.addEventListener(eventName, () => {
       updateLabels();
       applyFilters();
@@ -88,7 +88,7 @@ function updateLabels() {
 function applyFilters() {
   if (!originalImage) return;
 
-  // 一度でもモザイク描いたらフィルターいじらない（上書き防止）
+  // 一度でもモザイク描いたらフィルターはいじらない
   if (hasMosaic) return;
 
   canvas.width = baseWidth;
@@ -99,10 +99,10 @@ function applyFilters() {
   const filters = [
     `brightness(${brightness.value}%)`,
     `contrast(${contrast.value}%)`,
-    `saturate(${saturate.value}%)`
+    `saturate(${saturate.value}%)`,
   ];
   if (grayscale.checked) filters.push("grayscale(1)");
-  if (sepia.checked)     filters.push("sepia(1)");
+  if (sepia.checked) filters.push("sepia(1)");
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
@@ -131,23 +131,25 @@ function resetControls() {
   saturate.value = 100;
   grayscale.checked = false;
   sepia.checked = false;
-  // モザイク設定も初期化
+
+  // モードとモザイク種類もリセット
   currentMode = "mosaic";
   modeMosaic.classList.add("active");
   modeEraser.classList.remove("active");
   document.querySelector("input[name='mosaicType'][value='none']").checked = true;
   currentMosaicType = "none";
+
   brushSize.value = 40;
   updateLabels();
 }
 
 function lockFilters() {
-  [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
+  [brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
     input.disabled = true;
   });
 }
 function unlockFilters() {
-  [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
+  [brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
     input.disabled = false;
   });
 }
@@ -182,7 +184,7 @@ updateLabels();
 // ===== モザイク＆消しゴム =====
 //
 
-// モード切り替えボタン
+// モード切り替え
 modeMosaic.addEventListener("click", () => {
   currentMode = "mosaic";
   modeMosaic.classList.add("active");
@@ -196,7 +198,7 @@ modeEraser.addEventListener("click", () => {
 });
 
 // モザイク種類（「モザイクなし」含む）
-mosaicTypeInputs.forEach(radio => {
+mosaicTypeInputs.forEach((radio) => {
   radio.addEventListener("change", () => {
     if (radio.checked) {
       currentMosaicType = radio.value;
@@ -204,7 +206,7 @@ mosaicTypeInputs.forEach(radio => {
   });
 });
 
-// キャンバス座標取得（マウス／タッチ共通）
+// キャンバス座標取得
 function getCanvasPos(evt) {
   const rect = canvas.getBoundingClientRect();
   let clientX, clientY;
@@ -222,6 +224,7 @@ function getCanvasPos(evt) {
   return { x, y };
 }
 
+// 描画開始
 function startDraw(evt) {
   if (!originalImage) return;
   isDrawing = true;
@@ -230,6 +233,7 @@ function startDraw(evt) {
   evt.preventDefault();
 }
 
+// 描画中
 function moveDraw(evt) {
   if (!isDrawing) return;
   const pos = getCanvasPos(evt);
@@ -237,18 +241,19 @@ function moveDraw(evt) {
   evt.preventDefault();
 }
 
+// 描画終了
 function endDraw(evt) {
   isDrawing = false;
   evt && evt.preventDefault();
 }
 
-// PC
+// PC用
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mousemove", moveDraw);
 window.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mouseleave", endDraw);
 
-// スマホ
+// スマホ用
 canvas.addEventListener("touchstart", startDraw, { passive: false });
 canvas.addEventListener("touchmove", moveDraw, { passive: false });
 canvas.addEventListener("touchend", endDraw, { passive: false });
@@ -273,13 +278,13 @@ function paintAt(x, y) {
   if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
   if (sw <= 0 || sh <= 0) return;
 
-  // まだモザイクしてない → ここから先はフィルター固定
+  // 初回モザイク／消しゴム → フィルター固定
   if (!hasMosaic) {
     hasMosaic = true;
     lockFilters();
   }
 
-  // === 消しゴム ===
+  // === 消しゴムモード ===
   if (currentMode === "eraser") {
     ctx.save();
     ctx.beginPath();
@@ -291,23 +296,21 @@ function paintAt(x, y) {
   }
 
   // === モザイクモード ===
-
-  // 「モザイクなし」のときは何もしない（ON/OFF）
   if (currentMosaicType === "none") {
+    // 「モザイクなし」のときは何もしない（OFF）
     return;
   }
 
-  // カーソル先端＝ブラシの円の中だけ処理（見た目、先っぽからモザイクされていく）
   if (currentMosaicType === "pixel") {
     applyPixelMosaic(sx, sy, sw, sh);
   } else if (currentMosaicType === "glass") {
-    applyBlurMosaic(x, y, size, 3);
+    applyBlurMosaic(x, y, size, 3);  // すりガラスっぽく
   } else if (currentMosaicType === "blur") {
-    applyBlurMosaic(x, y, size, 8);
+    applyBlurMosaic(x, y, size, 8);  // 強めぼかし
   }
 }
 
-// ドットモザイク
+// ドット（ピクセル）モザイク
 function applyPixelMosaic(sx, sy, sw, sh) {
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
@@ -343,8 +346,17 @@ function applyBlurMosaic(centerX, centerY, size, blurRadius) {
   ctx.clip();
 
   ctx.filter = `blur(${blurRadius}px)`;
-  ctx.drawImage(baseCanvas, 0, 0, baseCanvas.width, baseCanvas.height,
-                0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    baseCanvas,
+    0,
+    0,
+    baseCanvas.width,
+    baseCanvas.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
   ctx.filter = "none";
 
   ctx.restore();
