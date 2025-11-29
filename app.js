@@ -26,15 +26,15 @@ let originalImage = null;
 let baseWidth = 0;
 let baseHeight = 0;
 
-// 元画像（フィルター適用後）を保持するオフスクリーンキャンバス
+// フィルター適用後の「基準画像」を持っとくキャンバス
 const baseCanvas = document.createElement("canvas");
 const baseCtx = baseCanvas.getContext("2d");
 
-// 状態管理
+// 状態
 let currentMode = "mosaic";       // "mosaic" or "eraser"
-let currentMosaicType = "pixel";  // "pixel" | "glass" | "blur"
+let currentMosaicType = "none";   // "none" | "pixel" | "glass" | "blur"
 let isDrawing = false;
-let hasMosaic = false;            // 一度でもモザイクを描いたら true
+let hasMosaic = false;            // モザイク・消しゴムを一度でも使ったか
 
 // 画像読み込み
 imageInput.addEventListener("change", (e) => {
@@ -68,7 +68,7 @@ imageInput.addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-// スライダー・チェックボックス変更 → フィルター適用（スマホ対策で input + change）
+// フィルター操作（スマホ対策で input + change）
 [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
   ["input", "change"].forEach(eventName => {
     input.addEventListener(eventName, () => {
@@ -78,7 +78,6 @@ imageInput.addEventListener("change", (e) => {
   });
 });
 
-// ラベル更新
 function updateLabels() {
   brightnessValue.textContent = `${brightness.value}%`;
   contrastValue.textContent = `${contrast.value}%`;
@@ -89,7 +88,7 @@ function updateLabels() {
 function applyFilters() {
   if (!originalImage) return;
 
-  // モザイクを描き始めてからはフィルターをいじらない
+  // 一度でもモザイク描いたらフィルターいじらない（上書き防止）
   if (hasMosaic) return;
 
   canvas.width = baseWidth;
@@ -102,7 +101,6 @@ function applyFilters() {
     `contrast(${contrast.value}%)`,
     `saturate(${saturate.value}%)`
   ];
-
   if (grayscale.checked) filters.push("grayscale(1)");
   if (sepia.checked)     filters.push("sepia(1)");
 
@@ -133,10 +131,16 @@ function resetControls() {
   saturate.value = 100;
   grayscale.checked = false;
   sepia.checked = false;
+  // モザイク設定も初期化
+  currentMode = "mosaic";
+  modeMosaic.classList.add("active");
+  modeEraser.classList.remove("active");
+  document.querySelector("input[name='mosaicType'][value='none']").checked = true;
+  currentMosaicType = "none";
+  brushSize.value = 40;
   updateLabels();
 }
 
-// フィルターロック／解除
 function lockFilters() {
   [brightness, contrast, saturate, grayscale, sepia].forEach(input => {
     input.disabled = true;
@@ -148,13 +152,12 @@ function unlockFilters() {
   });
 }
 
-// ダウンロード
+// ダウンロード（スマホ対応）
 downloadBtn.addEventListener("click", () => {
   if (!originalImage) {
     alert("先に画像を読み込んでね！");
     return;
   }
-
   const dataUrl = canvas.toDataURL("image/png");
   const ua = navigator.userAgent || "";
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -179,7 +182,7 @@ updateLabels();
 // ===== モザイク＆消しゴム =====
 //
 
-// モード切り替え
+// モード切り替えボタン
 modeMosaic.addEventListener("click", () => {
   currentMode = "mosaic";
   modeMosaic.classList.add("active");
@@ -192,7 +195,7 @@ modeEraser.addEventListener("click", () => {
   modeMosaic.classList.remove("active");
 });
 
-// モザイク種類
+// モザイク種類（「モザイクなし」含む）
 mosaicTypeInputs.forEach(radio => {
   radio.addEventListener("change", () => {
     if (radio.checked) {
@@ -201,7 +204,7 @@ mosaicTypeInputs.forEach(radio => {
   });
 });
 
-// キャンバス座標に変換（マウス／タッチ共通）
+// キャンバス座標取得（マウス／タッチ共通）
 function getCanvasPos(evt) {
   const rect = canvas.getBoundingClientRect();
   let clientX, clientY;
@@ -219,9 +222,6 @@ function getCanvasPos(evt) {
   return { x, y };
 }
 
-let isDrawing = false;
-
-// 描画開始
 function startDraw(evt) {
   if (!originalImage) return;
   isDrawing = true;
@@ -230,7 +230,6 @@ function startDraw(evt) {
   evt.preventDefault();
 }
 
-// 描画中
 function moveDraw(evt) {
   if (!isDrawing) return;
   const pos = getCanvasPos(evt);
@@ -238,7 +237,6 @@ function moveDraw(evt) {
   evt.preventDefault();
 }
 
-// 描画終了
 function endDraw(evt) {
   isDrawing = false;
   evt && evt.preventDefault();
@@ -256,12 +254,9 @@ canvas.addEventListener("touchmove", moveDraw, { passive: false });
 canvas.addEventListener("touchend", endDraw, { passive: false });
 canvas.addEventListener("touchcancel", endDraw, { passive: false });
 
-// 実際に塗る
+// 実際に塗る処理
 function paintAt(x, y) {
   if (!originalImage) return;
-
-  hasMosaic = true;
-  lockFilters();
 
   const size = parseInt(brushSize.value, 10);
   const half = size / 2;
@@ -271,14 +266,21 @@ function paintAt(x, y) {
   let sw = size;
   let sh = size;
 
+  // キャンバス外補正
   if (sx < 0) { sw += sx; sx = 0; }
   if (sy < 0) { sh += sy; sy = 0; }
   if (sx + sw > baseCanvas.width)  sw = baseCanvas.width - sx;
   if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
   if (sw <= 0 || sh <= 0) return;
 
+  // まだモザイクしてない → ここから先はフィルター固定
+  if (!hasMosaic) {
+    hasMosaic = true;
+    lockFilters();
+  }
+
+  // === 消しゴム ===
   if (currentMode === "eraser") {
-    // 元のフィルター済画像(baseCanvas)をそのまま戻す
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, size / 2, 0, Math.PI * 2);
@@ -288,23 +290,30 @@ function paintAt(x, y) {
     return;
   }
 
-  // モザイク
+  // === モザイクモード ===
+
+  // 「モザイクなし」のときは何もしない（ON/OFF）
+  if (currentMosaicType === "none") {
+    return;
+  }
+
+  // カーソル先端＝ブラシの円の中だけ処理（見た目、先っぽからモザイクされていく）
   if (currentMosaicType === "pixel") {
     applyPixelMosaic(sx, sy, sw, sh);
   } else if (currentMosaicType === "glass") {
-    applyBlurMosaic(x, y, size, 3);  // すりガラス：弱い
+    applyBlurMosaic(x, y, size, 3);
   } else if (currentMosaicType === "blur") {
-    applyBlurMosaic(x, y, size, 8);  // ぼかし：強い
+    applyBlurMosaic(x, y, size, 8);
   }
 }
 
-// ドット（ピクセル）モザイク
+// ドットモザイク
 function applyPixelMosaic(sx, sy, sw, sh) {
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
 
-  const blockCount = 8; // 荒さ調整用（大きいほど細かい）
-  const w = Math.max(1, Math.round(blockCount));
+  const blockCount = 8; // 大きいほど細かく、小さいほど荒い
+  const w = Math.max(1, blockCount);
   const h = Math.max(1, Math.round(blockCount * (sh / sw)));
 
   tempCanvas.width = w;
@@ -324,7 +333,7 @@ function applyPixelMosaic(sx, sy, sw, sh) {
   ctx.imageSmoothingEnabled = true;
 }
 
-// すりガラス＆ぼかし（blurの強さだけ変える）
+// すりガラス／ぼかしモザイク
 function applyBlurMosaic(centerX, centerY, size, blurRadius) {
   const radius = size / 2;
 
