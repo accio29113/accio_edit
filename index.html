@@ -31,6 +31,32 @@
         <span id="contrastValue">100%</span>
       </div>
 
+            <!-- ★ モード切り替え -->
+      <div class="control-group">
+        <label>編集モード</label>
+        <div class="mode-buttons">
+          <button type="button" id="modeMosaic" class="active">モザイク</button>
+          <button type="button" id="modeEraser">消しゴム</button>
+        </div>
+      </div>
+
+      <!-- ★ モザイクの種類 -->
+      <div class="control-group">
+        <label>モザイクの種類</label>
+        <div class="mosaic-types">
+          <label><input type="radio" name="mosaicType" value="pixel" checked> ドット</label>
+          <label><input type="radio" name="mosaicType" value="glass"> すりガラス</label>
+          <label><input type="radio" name="mosaicType" value="blur"> ぼかし</label>
+        </div>
+      </div>
+
+      <!-- ★ ブラシサイズ -->
+      <div class="control-group">
+        <label for="brushSize">ブラシの大きさ</label>
+        <input type="range" id="brushSize" min="10" max="120" value="40">
+      </div>
+
+
       <div class="control-group">
         <label for="saturate">色の濃さ</label>
         <input type="range" id="saturate" min="0" max="300" value="100">
@@ -67,4 +93,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
