@@ -361,3 +361,4 @@ function applyBlurMosaic(centerX, centerY, size, blurRadius) {
 
   ctx.restore();
 }
+
