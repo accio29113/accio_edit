@@ -1,7 +1,3 @@
-// ==== デバッグ表示（ここが出たら script はちゃんと動いとる）====
-console.log("app.js 読み込みOK");
-
-// 要素取得
 const imageInput = document.getElementById("imageInput");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -9,34 +5,23 @@ const ctx = canvas.getContext("2d");
 const modeMosaic = document.getElementById("modeMosaic");
 const modeEraser = document.getElementById("modeEraser");
 const brushSize = document.getElementById("brushSize");
+const mosaicStrength = document.getElementById("mosaicStrength");
 const mosaicTypeInputs = document.querySelectorAll("input[name='mosaicType']");
+
 const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 
-// ここで canvas と ctx が null じゃないかチェック
-if (!canvas || !ctx) {
-  alert("canvas が見つかってない or getContext できてないよ！");
-}
-
-// ページ読み込み直後にテスト用のピンク四角を描く
-window.addEventListener("load", () => {
-  ctx.fillStyle = "#ffcccc";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#444";
-  ctx.font = "20px sans-serif";
-  ctx.fillText("テスト表示", 20, 40);
-});
-
-// ===== ここから本番ロジック =====
 let originalImage = null;
 let baseWidth = 0;
 let baseHeight = 0;
 
+// 元画像を保持するキャンバス（消しゴムでここから復元）
 const baseCanvas = document.createElement("canvas");
 const baseCtx = baseCanvas.getContext("2d");
 
-let currentMode = "mosaic";      // "mosaic" or "eraser"
-let currentMosaicType = "none";  // "none" | "pixel" | "glass" | "blur"
+// 状態
+let currentMode = "mosaic";       // "mosaic" or "eraser"
+let currentMosaicType = "none";   // "none" | "pixel" | "glass" | "blur"
 let isDrawing = false;
 
 // 画像読み込み
@@ -48,22 +33,23 @@ imageInput.addEventListener("change", (e) => {
   reader.onload = function (ev) {
     const img = new Image();
     img.onload = function () {
-      console.log("画像読み込みOK", img.width, img.height);
       originalImage = img;
 
-      const maxWidth = 600;
-      const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+      // 高解像度保持用：大きすぎる場合だけ縮小（最大1600px）
+      const maxDim = 1600;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
 
-      baseWidth = img.width * scale;
-      baseHeight = img.height * scale;
+      baseWidth = Math.round(img.width * scale);
+      baseHeight = Math.round(img.height * scale);
 
       canvas.width = baseWidth;
       canvas.height = baseHeight;
       baseCanvas.width = baseWidth;
       baseCanvas.height = baseHeight;
 
+      // 元画像をベースと画面に描画
       baseCtx.clearRect(0, 0, baseWidth, baseHeight);
-      baseCtx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
+      baseCtx.drawImage(img, 0, 0, baseWidth, baseHeight);
 
       drawBaseToCanvas();
       resetControls();
@@ -116,10 +102,11 @@ function resetControls() {
   document.querySelector("input[name='mosaicType'][value='none']").checked = true;
   currentMosaicType = "none";
 
-  brushSize.value = 40;
+  brushSize.value = 50;
+  mosaicStrength.value = 5;
 }
 
-// ダウンロード
+// ダウンロード（高解像度：canvasサイズそのままPNG）
 downloadBtn.addEventListener("click", () => {
   if (!originalImage) {
     alert("先に画像を読み込んでね！");
@@ -135,7 +122,7 @@ downloadBtn.addEventListener("click", () => {
   document.body.removeChild(link);
 });
 
-// ===== マウスでの描画処理 =====
+// ===== マウスでの描画処理（PC専用） =====
 
 function getCanvasPos(evt) {
   const rect = canvas.getBoundingClientRect();
@@ -178,12 +165,14 @@ function paintAt(x, y) {
   let sw = size;
   let sh = size;
 
+  // キャンバス外補正
   if (sx < 0) { sw += sx; sx = 0; }
   if (sy < 0) { sh += sy; sy = 0; }
   if (sx + sw > baseCanvas.width)  sw = baseCanvas.width - sx;
   if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
   if (sw <= 0 || sh <= 0) return;
 
+  // 消しゴムモード
   if (currentMode === "eraser") {
     ctx.save();
     ctx.beginPath();
@@ -194,27 +183,31 @@ function paintAt(x, y) {
     return;
   }
 
+  // モザイクモード
   if (currentMosaicType === "none") {
+    // モザイクOFF
     return;
   }
 
   if (currentMosaicType === "pixel") {
     applyPixelMosaic(sx, sy, sw, sh);
   } else if (currentMosaicType === "glass") {
-    applyBlurMosaic(x, y, size, 3);
+    applyBlurMosaic(x, y, size, false);
   } else if (currentMosaicType === "blur") {
-    applyBlurMosaic(x, y, size, 8);
+    applyBlurMosaic(x, y, size, true);
   }
 }
 
-// ドットモザイク
+// ドット（ピクセル）モザイク（強さでブロックサイズ変更）
 function applyPixelMosaic(sx, sy, sw, sh) {
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
 
-  const blockCount = 8;
-  const w = Math.max(1, blockCount);
-  const h = Math.max(1, Math.round(blockCount * (sh / sw)));
+  const strength = parseInt(mosaicStrength.value, 10); // 1〜10
+  // 強さが大きいほどブロック大きく（＝荒く隠れる）
+  const blockSize = 4 + (strength - 1) * 8; // 4〜76px くらい
+  const w = Math.max(1, Math.round(sw / blockSize));
+  const h = Math.max(1, Math.round(sh / blockSize));
 
   tempCanvas.width = w;
   tempCanvas.height = h;
@@ -233,9 +226,14 @@ function applyPixelMosaic(sx, sy, sw, sh) {
   ctx.imageSmoothingEnabled = true;
 }
 
-// すりガラス／ぼかし
-function applyBlurMosaic(centerX, centerY, size, blurRadius) {
+// すりガラス／ぼかしモザイク（強さでぼかし量変更）
+function applyBlurMosaic(centerX, centerY, size, isStrongBlur) {
   const radius = size / 2;
+  const strength = parseInt(mosaicStrength.value, 10); // 1〜10
+
+  // すりガラス：弱〜中、ぼかし：中〜強
+  const base = isStrongBlur ? 2.0 : 0.8;
+  const blurRadius = base * strength; // px
 
   ctx.save();
   ctx.beginPath();
