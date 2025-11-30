@@ -70,18 +70,6 @@ body {
   width: 100%;
 }
 
-.control-group span {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.check-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-
 .buttons {
   display: flex;
   flex-wrap: wrap;
@@ -169,7 +157,7 @@ button:active {
   gap: 4px;
 }
 
-/* スマホ向け：文字サイズは控えめな最初のやつに戻し */
+/* スマホ向け（見た目だけ。機能はPC想定） */
 @media (max-width: 600px) {
   .container {
     padding: 8px;
