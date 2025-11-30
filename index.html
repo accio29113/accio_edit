@@ -7,27 +7,23 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="header">
-     <img src="accio_logo.jpg" class="logo">
-    <h1>アクシオ・モザイク加工ラボ</h1>
-    <p>PCから画像を選んで、ドラッグでモザイク＆消しゴム編集ができます。</p>
+  <header class="header fade-in">
+    <div class="header-inner">
+      <img src="accio_logo.jpg" class="logo" alt="アクシオロゴ">
+      <div class="title-block">
+        <h1>アクシオ・モザイク加工ラボ</h1>
+        <p>PCから画像を選んで、ドラッグでモザイク＆消しゴム編集ができます。</p>
+      </div>
+    </div>
   </header>
 
   <main class="container">
-    <section class="controls">
+    <!-- ★ここにクラスを足すだけ：box-shadow-soft fade-in -->
+    <section class="controls box-shadow-soft fade-in">
       <div class="control-group">
         <label for="imageInput">① 写真をえらぶ（PCから）</label>
         <input type="file" id="imageInput" accept="image/*">
       </div>
-
-      <section class="controls box-shadow-soft fade-in">
-...
-</section>
-
-<section class="preview box-shadow-soft fade-in">
-...
-</section>
-
 
       <!-- 編集モード -->
       <div class="control-group">
@@ -67,22 +63,9 @@
       </div>
     </section>
 
-    <section class="preview">
+    <!-- ★こっちもクラス足すだけ：box-shadow-soft fade-in -->
+    <section class="preview box-shadow-soft fade-in">
       <canvas id="canvas"></canvas>
       <p class="hint">
         ※ まず「写真をえらぶ」から画像を読み込んでね。<br>
-        「モザイク」を選んで画像の上をドラッグすると、カーソル先端からモザイクされていきます。<br>
-        「消しゴム」にすると、元の画像を部分的に戻せます。
-      </p>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <p>作：みかぽんのモザイクラボ（PC専用）</p>
-  </footer>
-
-  <script src="app.js"></script>
-</body>
-</html>
-
-
+        「モザイク
