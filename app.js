@@ -2,31 +2,19 @@ const imageInput = document.getElementById("imageInput");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// フィルター関連
-const brightness = document.getElementById("brightness");
-const contrast = document.getElementById("contrast");
-const saturate = document.getElementById("saturate");
-const grayscale = document.getElementById("grayscale");
-const sepia = document.getElementById("sepia");
-
-const brightnessValue = document.getElementById("brightnessValue");
-const contrastValue = document.getElementById("contrastValue");
-const saturateValue = document.getElementById("saturateValue");
-
-const resetBtn = document.getElementById("resetBtn");
-const downloadBtn = document.getElementById("downloadBtn");
-
-// モザイク系
 const modeMosaic = document.getElementById("modeMosaic");
 const modeEraser = document.getElementById("modeEraser");
 const brushSize = document.getElementById("brushSize");
 const mosaicTypeInputs = document.querySelectorAll("input[name='mosaicType']");
 
+const resetBtn = document.getElementById("resetBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+
 let originalImage = null;
 let baseWidth = 0;
 let baseHeight = 0;
 
-// フィルター適用後の「基準画像」
+// 元画像を保持するキャンバス（「消しゴム」でここから復元）
 const baseCanvas = document.createElement("canvas");
 const baseCtx = baseCanvas.getContext("2d");
 
@@ -34,7 +22,6 @@ const baseCtx = baseCanvas.getContext("2d");
 let currentMode = "mosaic";       // "mosaic" or "eraser"
 let currentMosaicType = "none";   // "none" | "pixel" | "glass" | "blur"
 let isDrawing = false;
-let hasMosaic = false;            // モザイク・消しゴムを一度でも使ったか
 
 // 画像読み込み
 imageInput.addEventListener("change", (e) => {
@@ -58,131 +45,23 @@ imageInput.addEventListener("change", (e) => {
       baseCanvas.width = baseWidth;
       baseCanvas.height = baseHeight;
 
-      hasMosaic = false;
-      unlockFilters();
+      // 元画像をベースと表示用両方に描画
+      baseCtx.clearRect(0, 0, baseWidth, baseHeight);
+      baseCtx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
+
+      drawBaseToCanvas();
       resetControls();
-      applyFilters();
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 });
 
-// フィルター操作（スマホ対策で input + change）
-[brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
-  ["input", "change"].forEach((eventName) => {
-    input.addEventListener(eventName, () => {
-      updateLabels();
-      applyFilters();
-    });
-  });
-});
-
-function updateLabels() {
-  brightnessValue.textContent = `${brightness.value}%`;
-  contrastValue.textContent = `${contrast.value}%`;
-  saturateValue.textContent = `${saturate.value}%`;
-}
-
-// フィルター適用
-function applyFilters() {
-  if (!originalImage) return;
-
-  // 一度でもモザイク描いたらフィルターはいじらない
-  if (hasMosaic) return;
-
-  canvas.width = baseWidth;
-  canvas.height = baseHeight;
-  baseCanvas.width = baseWidth;
-  baseCanvas.height = baseHeight;
-
-  const filters = [
-    `brightness(${brightness.value}%)`,
-    `contrast(${contrast.value}%)`,
-    `saturate(${saturate.value}%)`,
-  ];
-  if (grayscale.checked) filters.push("grayscale(1)");
-  if (sepia.checked) filters.push("sepia(1)");
-
+function drawBaseToCanvas() {
+  if (!baseWidth || !baseHeight) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
-
-  ctx.filter = filters.join(" ");
-  baseCtx.filter = filters.join(" ");
-
-  ctx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
-  baseCtx.drawImage(originalImage, 0, 0, baseWidth, baseHeight);
-
-  ctx.filter = "none";
-  baseCtx.filter = "none";
+  ctx.drawImage(baseCanvas, 0, 0, baseWidth, baseHeight);
 }
-
-// リセット
-resetBtn.addEventListener("click", () => {
-  hasMosaic = false;
-  unlockFilters();
-  resetControls();
-  applyFilters();
-});
-
-function resetControls() {
-  brightness.value = 100;
-  contrast.value = 100;
-  saturate.value = 100;
-  grayscale.checked = false;
-  sepia.checked = false;
-
-  // モードとモザイク種類もリセット
-  currentMode = "mosaic";
-  modeMosaic.classList.add("active");
-  modeEraser.classList.remove("active");
-  document.querySelector("input[name='mosaicType'][value='none']").checked = true;
-  currentMosaicType = "none";
-
-  brushSize.value = 40;
-  updateLabels();
-}
-
-function lockFilters() {
-  [brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
-    input.disabled = true;
-  });
-}
-function unlockFilters() {
-  [brightness, contrast, saturate, grayscale, sepia].forEach((input) => {
-    input.disabled = false;
-  });
-}
-
-// ダウンロード（スマホ対応）
-downloadBtn.addEventListener("click", () => {
-  if (!originalImage) {
-    alert("先に画像を読み込んでね！");
-    return;
-  }
-  const dataUrl = canvas.toDataURL("image/png");
-  const ua = navigator.userAgent || "";
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-
-  if (isIOS) {
-    window.open(dataUrl, "_blank");
-    alert("画像が開いたら、長押しして『写真に追加』か『画像を保存』を選んでね！");
-  } else {
-    const link = document.createElement("a");
-    link.download = "edited-image.png";
-    link.href = dataUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-});
-
-// 初期ラベル
-updateLabels();
-
-//
-// ===== モザイク＆消しゴム =====
-//
 
 // モード切り替え
 modeMosaic.addEventListener("click", () => {
@@ -197,7 +76,7 @@ modeEraser.addEventListener("click", () => {
   modeMosaic.classList.remove("active");
 });
 
-// モザイク種類（「モザイクなし」含む）
+// モザイク種類
 mosaicTypeInputs.forEach((radio) => {
   radio.addEventListener("change", () => {
     if (radio.checked) {
@@ -206,58 +85,71 @@ mosaicTypeInputs.forEach((radio) => {
   });
 });
 
-// キャンバス座標取得
-function getCanvasPos(evt) {
-  const rect = canvas.getBoundingClientRect();
-  let clientX, clientY;
+// リセット
+resetBtn.addEventListener("click", () => {
+  if (!originalImage) return;
+  drawBaseToCanvas();
+  resetControls();
+});
 
-  if (evt.touches && evt.touches[0]) {
-    clientX = evt.touches[0].clientX;
-    clientY = evt.touches[0].clientY;
-  } else {
-    clientX = evt.clientX;
-    clientY = evt.clientY;
+function resetControls() {
+  currentMode = "mosaic";
+  modeMosaic.classList.add("active");
+  modeEraser.classList.remove("active");
+
+  document.querySelector("input[name='mosaicType'][value='none']").checked = true;
+  currentMosaicType = "none";
+
+  brushSize.value = 40;
+}
+
+// ダウンロード
+downloadBtn.addEventListener("click", () => {
+  if (!originalImage) {
+    alert("先に画像を読み込んでね！");
+    return;
   }
 
-  const x = (clientX - rect.left) * (canvas.width / rect.width);
-  const y = (clientY - rect.top) * (canvas.height / rect.height);
+  const dataUrl = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.download = "mosaic-image.png";
+  link.href = dataUrl;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+// ===== マウスでの描画処理（PC専用） =====
+
+function getCanvasPos(evt) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
   return { x, y };
 }
 
-// 描画開始
 function startDraw(evt) {
   if (!originalImage) return;
   isDrawing = true;
   const pos = getCanvasPos(evt);
   paintAt(pos.x, pos.y);
-  evt.preventDefault();
 }
 
-// 描画中
 function moveDraw(evt) {
   if (!isDrawing) return;
   const pos = getCanvasPos(evt);
   paintAt(pos.x, pos.y);
-  evt.preventDefault();
 }
 
-// 描画終了
-function endDraw(evt) {
+function endDraw() {
   isDrawing = false;
-  evt && evt.preventDefault();
 }
 
-// PC用
+// PC用イベントだけ
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mousemove", moveDraw);
 window.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mouseleave", endDraw);
-
-// スマホ用
-canvas.addEventListener("touchstart", startDraw, { passive: false });
-canvas.addEventListener("touchmove", moveDraw, { passive: false });
-canvas.addEventListener("touchend", endDraw, { passive: false });
-canvas.addEventListener("touchcancel", endDraw, { passive: false });
 
 // 実際に塗る処理
 function paintAt(x, y) {
@@ -278,13 +170,7 @@ function paintAt(x, y) {
   if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
   if (sw <= 0 || sh <= 0) return;
 
-  // 初回モザイク／消しゴム → フィルター固定
-  if (!hasMosaic) {
-    hasMosaic = true;
-    lockFilters();
-  }
-
-  // === 消しゴムモード ===
+  // 消しゴムモード
   if (currentMode === "eraser") {
     ctx.save();
     ctx.beginPath();
@@ -295,18 +181,18 @@ function paintAt(x, y) {
     return;
   }
 
-  // === モザイクモード ===
+  // モザイクモード
   if (currentMosaicType === "none") {
-    // 「モザイクなし」のときは何もしない（OFF）
+    // モザイクなし → 何もしない（ON/OFF）
     return;
   }
 
   if (currentMosaicType === "pixel") {
     applyPixelMosaic(sx, sy, sw, sh);
   } else if (currentMosaicType === "glass") {
-    applyBlurMosaic(x, y, size, 3);  // すりガラスっぽく
+    applyBlurMosaic(x, y, size, 3);
   } else if (currentMosaicType === "blur") {
-    applyBlurMosaic(x, y, size, 8);  // 強めぼかし
+    applyBlurMosaic(x, y, size, 8);
   }
 }
 
@@ -361,4 +247,3 @@ function applyBlurMosaic(centerX, centerY, size, blurRadius) {
 
   ctx.restore();
 }
-
