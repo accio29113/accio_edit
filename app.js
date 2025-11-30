@@ -16,6 +16,9 @@ let baseWidth = 0;
 let baseHeight = 0;
 
 // 元画像を保持するキャンバス（消しゴムでここから復元）
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
 const baseCanvas = document.createElement("canvas");
 const baseCtx = baseCanvas.getContext("2d");
 
@@ -23,6 +26,33 @@ const baseCtx = baseCanvas.getContext("2d");
 let currentMode = "mosaic";       // "mosaic" or "eraser"
 let currentMosaicType = "none";   // "none" | "pixel" | "glass" | "blur"
 let isDrawing = false;
+
+const state = {
+  // 画像
+  originalImage: null,
+  baseWidth: 0,
+  baseHeight: 0,
+
+  // モード
+  toolMode: "brush",   // "brush" | "rect" | "eraser"
+  brushShape: "circle",// "circle" | "square" | "heart"
+  mosaicType: "none",  // "none" | "pixel" | "glass" | "blur"
+
+  // 描画中フラグ
+  isDrawing: false,    // ブラシ描画中
+  isSelecting: false,  // 四角選択ドラッグ中
+
+  // 四角選択用座標
+  rectStart: null,     // {x, y}
+  rectEnd: null,       // {x, y}
+
+  // Undo/Redo
+  undoStack: [],
+  redoStack: [],
+  maxHistory: 20
+};
+
+
 
 // 画像読み込み
 imageInput.addEventListener("change", (e) => {
@@ -143,6 +173,79 @@ function moveDraw(evt) {
   const pos = getCanvasPos(evt);
   paintAt(pos.x, pos.y);
 }
+if (state.toolMode === "eraser") {
+  // クリップしてから baseCanvas を貼り付け
+  ctx.save();
+  clipBrushShape(state.brushShape, x, y, size);
+  ctx.clip();
+  ctx.drawImage(baseCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+  ctx.restore();
+  return;
+}
+
+// モザイク
+if (state.toolMode === "brush") {
+  if (state.mosaicType === "pixel") {
+    // いつものピクセルモザイクだけど、描画前に clipBrushShape をつかう
+  }
+}
+if (state.toolMode === "rect") {
+  state.isSelecting = true;
+  state.rectStart = getCanvasPos(evt); // {x, y}
+  state.rectEnd = { ...state.rectStart };
+}
+if (state.toolMode === "rect" && state.isSelecting) {
+  state.rectEnd = getCanvasPos(evt);
+  drawBaseToCanvas();            // 元の画像＋モザイク済みの状態を描いて
+  drawSelectionPreview();        // その上に選択枠だけ描く
+}
+if (state.toolMode === "rect" && state.isSelecting) {
+  state.isSelecting = false;
+  applyMosaicToRect(state.rectStart, state.rectEnd);
+  pushHistory();  // 履歴に保存
+}
+function drawSelectionPreview() {
+  if (!state.rectStart || !state.rectEnd) return;
+
+  const x1 = state.rectStart.x;
+  const y1 = state.rectStart.y;
+  const x2 = state.rectEnd.x;
+  const y2 = state.rectEnd.y;
+
+  const x = Math.min(x1, x2);
+  const y = Math.min(y1, y2);
+  const w = Math.abs(x2 - x1);
+  const h = Math.abs(y2 - y1);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 120, 180, 0.9)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]); // 点線
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+function applyMosaicToRect(start, end) {
+  const x1 = Math.min(start.x, end.x);
+  const y1 = Math.min(start.y, end.y);
+  const x2 = Math.max(start.x, end.x);
+  const y2 = Math.max(start.y, end.y);
+
+  const sx = Math.floor(x1);
+  const sy = Math.floor(y1);
+  const sw = Math.floor(x2 - x1);
+  const sh = Math.floor(y2 - y1);
+
+  if (sw <= 0 || sh <= 0) return;
+
+  if (state.mosaicType === "pixel") {
+    applyPixelMosaic(sx, sy, sw, sh);
+  } else if (state.mosaicType === "glass") {
+    applyBlurRect(sx, sy, sw, sh, false);
+  } else if (state.mosaicType === "blur") {
+    applyBlurRect(sx, sy, sw, sh, true);
+  }
+}
+
 
 function endDraw() {
   isDrawing = false;
@@ -197,6 +300,29 @@ function paintAt(x, y) {
     applyBlurMosaic(x, y, size, true);
   }
 }
+
+function clipBrushShape(shape, x, y, size) {
+  const r = size / 2;
+  ctx.beginPath();
+
+  if (shape === "circle") {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  } else if (shape === "square") {
+    ctx.rect(x - r, y - r, size, size);
+  } else if (shape === "heart") {
+    // 簡易ハート（上下2つの丸＋下の三角）
+    const topY = y - r * 0.25;
+    const leftX = x - r * 0.5;
+    const rightX = x + r * 0.5;
+
+    ctx.moveTo(x, y + r * 0.6);
+    ctx.bezierCurveTo(x + r, y, x + r, y - r * 0.7, x, topY - r * 0.3);
+    ctx.bezierCurveTo(x - r, y - r * 0.7, x - r, y, x, y + r * 0.6);
+  }
+
+  ctx.closePath();
+}
+
 
 // ドット（ピクセル）モザイク（強さでブロックサイズ変更）
 function applyPixelMosaic(sx, sy, sw, sh) {
@@ -256,3 +382,40 @@ function applyBlurMosaic(centerX, centerY, size, isStrongBlur) {
 
   ctx.restore();
 }
+
+function pushHistory() {
+  const dataUrl = canvas.toDataURL("image/png");
+  state.undoStack.push(dataUrl);
+  if (state.undoStack.length > state.maxHistory) {
+    state.undoStack.shift(); // 古いのから消す
+  }
+  state.redoStack = []; // 新しい操作したら Redo はクリア
+}
+
+function restoreFromDataUrl(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = dataUrl;
+}
+
+function undo() {
+  if (state.undoStack.length === 0) return;
+  const current = canvas.toDataURL("image/png");
+  state.redoStack.push(current);
+
+  const last = state.undoStack.pop();
+  restoreFromDataUrl(last);
+}
+
+function redo() {
+  if (state.redoStack.length === 0) return;
+  const current = canvas.toDataURL("image/png");
+  state.undoStack.push(current);
+
+  const next = state.redoStack.pop();
+  restoreFromDataUrl(next);
+}
+
