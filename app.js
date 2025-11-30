@@ -1,3 +1,15 @@
+console.log("app.js 読み込みテスト");
+
+window.addEventListener("load", () => {
+  const testCanvas = document.getElementById("canvas");
+  const testCtx = testCanvas.getContext("2d");
+  testCtx.fillStyle = "#ffcccc";
+  testCtx.fillRect(0, 0, 200, 80);
+  testCtx.fillStyle = "#444";
+  testCtx.font = "16px sans-serif";
+  testCtx.fillText("テスト表示", 10, 30);
+});
+
 // 要素取得
 const imageInput = document.getElementById("imageInput");
 const canvas = document.getElementById("canvas");
@@ -258,3 +270,4 @@ function applyBlurMosaic(centerX, centerY, size, isStrongBlur) {
 
   ctx.restore();
 }
+
