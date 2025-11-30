@@ -110,6 +110,7 @@ button:active {
 
 #canvas {
   max-width: 100%;
+  height: auto;
   border-radius: 12px;
   border: 2px dashed #ffc1dd;
   background: #fdf2f8;
@@ -157,7 +158,7 @@ button:active {
   gap: 4px;
 }
 
-/* スマホ向け（見た目だけ。機能はPC想定） */
+/* スマホでも一応見えるように（機能はPC前提） */
 @media (max-width: 600px) {
   .container {
     padding: 8px;
