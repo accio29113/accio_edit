@@ -2,34 +2,74 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>モザイクテスト（PC専用）</title>
+  <title>かんたんモザイク加工アプリ（PC専用）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>モザイクテスト</h1>
+  <header class="header">
+    <h1>かんたんモザイク加工アプリ</h1>
+    <p>PCから画像を選んで、ドラッグでモザイク＆消しゴム編集ができます。</p>
+  </header>
 
-  <p>① 画像をえらぶ（PCから）</p>
-  <input type="file" id="imageInput" accept="image/*">
+  <main class="container">
+    <section class="controls">
+      <div class="control-group">
+        <label for="imageInput">① 写真をえらぶ（PCから）</label>
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
 
-  <p>② キャンバス（ここに画像やモザイクが出る）</p>
-  <canvas id="canvas" width="600" height="400" style="border:1px solid #999;"></canvas>
+      <!-- 編集モード -->
+      <div class="control-group">
+        <label>編集モード</label>
+        <div class="mode-buttons">
+          <button type="button" id="modeMosaic" class="active">モザイク</button>
+          <button type="button" id="modeEraser">消しゴム</button>
+        </div>
+      </div>
 
-  <p>モード：</p>
-  <button id="modeMosaic" class="active">モザイク</button>
-  <button id="modeEraser">消しゴム</button>
+      <!-- モザイク種類 -->
+      <div class="control-group">
+        <label>モザイクの種類</label>
+        <div class="mosaic-types">
+          <label><input type="radio" name="mosaicType" value="none" checked> モザイクなし</label>
+          <label><input type="radio" name="mosaicType" value="pixel"> ドット</label>
+          <label><input type="radio" name="mosaicType" value="glass"> すりガラス</label>
+          <label><input type="radio" name="mosaicType" value="blur"> ぼかし</label>
+        </div>
+      </div>
 
-  <p>モザイクの種類：</p>
-  <label><input type="radio" name="mosaicType" value="none" checked> モザイクなし</label>
-  <label><input type="radio" name="mosaicType" value="pixel"> ドット</label>
-  <label><input type="radio" name="mosaicType" value="glass"> すりガラス</label>
-  <label><input type="radio" name="mosaicType" value="blur"> ぼかし</label>
+      <!-- モザイクの強さ -->
+      <div class="control-group">
+        <label for="mosaicStrength">モザイクの強さ</label>
+        <input type="range" id="mosaicStrength" min="1" max="10" value="5">
+      </div>
 
-  <p>ブラシの大きさ：</p>
-  <input type="range" id="brushSize" min="10" max="120" value="40">
+      <!-- ブラシサイズ -->
+      <div class="control-group">
+        <label for="brushSize">ブラシの大きさ</label>
+        <input type="range" id="brushSize" min="10" max="160" value="50">
+      </div>
 
-  <p>
-    <button id="resetBtn">リセット</button>
-    <button id="downloadBtn">画像をダウンロード</button>
-  </p>
+      <div class="buttons">
+        <button id="resetBtn">リセット</button>
+        <button id="downloadBtn">画像をダウンロード</button>
+      </div>
+    </section>
+
+    <section class="preview">
+      <canvas id="canvas"></canvas>
+      <p class="hint">
+        ※ まず「写真をえらぶ」から画像を読み込んでね。<br>
+        「モザイク」を選んで画像の上をドラッグすると、カーソル先端からモザイクされていきます。<br>
+        「消しゴム」にすると、元の画像を部分的に戻せます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>作：みかぽんのモザイクラボ（PC専用）</p>
+  </footer>
 
   <script src="app.js"></script>
 </body>
