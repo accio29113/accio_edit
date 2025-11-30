@@ -25,14 +25,35 @@
         <input type="file" id="imageInput" accept="image/*">
       </div>
 
-      <!-- 編集モード -->
-      <div class="control-group">
-        <label>編集モード</label>
-        <div class="mode-buttons">
-          <button type="button" id="modeMosaic" class="active">モザイク</button>
-          <button type="button" id="modeEraser">消しゴム</button>
-        </div>
-      </div>
+    <!-- 編集モード -->
+<div class="control-group">
+  <label>編集モード</label>
+  <div class="mode-buttons">
+    <button type="button" id="modeBrush" class="active">ブラシ</button>
+    <button type="button" id="modeRect">四角選択</button>
+    <button type="button" id="modeEraser">消しゴム</button>
+  </div>
+</div>
+
+<!-- ブラシ形状ラジオボタン -->
+<div class="control-group" id="brushShapeGroup">
+  <label>ブラシの形</label>
+  <div class="brush-shapes">
+    <label><input type="radio" name="brushShape" value="circle" checked> まる</label>
+    <label><input type="radio" name="brushShape" value="square"> しかく</label>
+    <label><input type="radio" name="brushShape" value="heart"> ハート</label>
+  </div>
+</div>
+
+<!-- Undo / Redo ボタン -->
+<div class="control-group">
+  <label>履歴</label>
+  <div class="history-buttons">
+    <button type="button" id="undoBtn">戻る</button>
+    <button type="button" id="redoBtn">やり直し</button>
+  </div>
+</div>
+
 
       <!-- モザイク種類 -->
       <div class="control-group">
@@ -69,3 +90,4 @@
       <p class="hint">
         ※ まず「写真をえらぶ」から画像を読み込んでね。<br>
         「モザイク
+
