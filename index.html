@@ -2,50 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>かんたん写真加工アプリ</title>
+  <title>かんたんモザイク加工アプリ（PC専用）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="header">
-    <h1>かんたん写真加工アプリ</h1>
-    <p>画像を選んで、フィルターとモザイクで遊んでみてね。</p>
+    <h1>かんたんモザイク加工アプリ</h1>
+    <p>PCから画像を選んで、ドラッグしてモザイク／消しゴムで編集できます。</p>
   </header>
 
   <main class="container">
     <section class="controls">
       <div class="control-group">
-        <label for="imageInput">① 写真をえらぶ</label>
+        <label for="imageInput">① 写真をえらぶ（PCから）</label>
         <input type="file" id="imageInput" accept="image/*">
-      </div>
-
-      <div class="control-group">
-        <label for="brightness">明るさ</label>
-        <input type="range" id="brightness" min="0" max="200" value="100">
-        <span id="brightnessValue">100%</span>
-      </div>
-
-      <div class="control-group">
-        <label for="contrast">コントラスト</label>
-        <input type="range" id="contrast" min="0" max="200" value="100">
-        <span id="contrastValue">100%</span>
-      </div>
-
-      <div class="control-group">
-        <label for="saturate">色の濃さ</label>
-        <input type="range" id="saturate" min="0" max="300" value="100">
-        <span id="saturateValue">100%</span>
-      </div>
-
-      <div class="control-group check-group">
-        <label>
-          <input type="checkbox" id="grayscale">
-          白黒（グレースケール）
-        </label>
-        <label>
-          <input type="checkbox" id="sepia">
-          セピア
-        </label>
       </div>
 
       <!-- 編集モード -->
@@ -83,16 +54,4 @@
     <section class="preview">
       <canvas id="canvas"></canvas>
       <p class="hint">
-        ※ まず「写真をえらぶ」から画像を読み込んでね。<br>
-        モザイクは「モザイク」「モザイクの種類」を選んで、画像の上をドラッグ／なぞって塗っていくよ。
-      </p>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <p>作：みかぽんの写真加工ラボ</p>
-  </footer>
-
-  <script src="app.js"></script>
-</body>
-</html>
+        ※ まず「写真をえらぶ」から画像を読み込んでね
