@@ -194,4 +194,28 @@ button:active {
     font-size: 0.8rem;
   }
 }
+.logo {
+  height: 48px;
+  margin-right: 12px;
+}
+button {
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  background: #ff8fc9;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 16px rgba(255, 106, 165, 0.35);
+}
+
+button:hover {
+  transform: translateY(-3px) scale(1.03);
+}
+
+button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
 
