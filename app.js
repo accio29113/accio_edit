@@ -1,5 +1,5 @@
 // =====================
-// 起動テスト（ちゃんと読めてるか確認用）
+// 起動テスト
 // =====================
 console.log("app.js 読み込みOK！");
 
@@ -16,6 +16,10 @@ const mosaicTypeInputs = document.querySelectorAll("input[name='mosaicType']");
 
 const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
+
+// Undo / Redo ボタン（今はダミーでログだけ）
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
 
 // 画像情報
 let originalImage = null;
@@ -47,7 +51,7 @@ imageInput.addEventListener("change", (e) => {
       console.log("画像読み込み完了", img.width, img.height);
       originalImage = img;
 
-      // 高解像度保持用：大きすぎる場合だけ縮小（最大1600px）
+      // 大きすぎる場合だけ縮小（最大1600px）
       const maxDim = 1600;
       const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
 
@@ -97,6 +101,7 @@ mosaicTypeInputs.forEach((radio) => {
   radio.addEventListener("change", () => {
     if (radio.checked) {
       currentMosaicType = radio.value;
+      console.log("モザイク種類変更:", currentMosaicType);
     }
   });
 });
@@ -113,7 +118,8 @@ function resetControls() {
   modeMosaic.classList.add("active");
   modeEraser.classList.remove("active");
 
-  document.querySelector("input[name='mosaicType'][value='none']").checked = true;
+  const noneRadio = document.querySelector("input[name='mosaicType'][value='none']");
+  if (noneRadio) noneRadio.checked = true;
   currentMosaicType = "none";
 
   brushSize.value = 50;
@@ -136,6 +142,17 @@ downloadBtn.addEventListener("click", () => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+});
+
+// =====================
+// Undo / Redo（今はまだ中身なし）
+// =====================
+undoBtn.addEventListener("click", () => {
+  console.log("Undo（まだ未実装）");
+});
+
+redoBtn.addEventListener("click", () => {
+  console.log("Redo（まだ未実装）");
 });
 
 // =====================
@@ -172,7 +189,7 @@ window.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mouseleave", endDraw);
 
 // =====================
-// 実際に塗る処理
+// 実際に塗る処理（丸ブラシ）
 // =====================
 function paintAt(x, y) {
   if (!originalImage) return;
@@ -192,7 +209,7 @@ function paintAt(x, y) {
   if (sy + sh > baseCanvas.height) sh = baseCanvas.height - sy;
   if (sw <= 0 || sh <= 0) return;
 
-  // 消しゴムモード
+  // 消しゴムモード（丸）
   if (currentMode === "eraser") {
     ctx.save();
     ctx.beginPath();
@@ -218,7 +235,9 @@ function paintAt(x, y) {
   }
 }
 
-// ドット（ピクセル）モザイク（強さでブロックサイズ変更）
+// =====================
+// ドット（ピクセル）モザイク
+// =====================
 function applyPixelMosaic(sx, sy, sw, sh) {
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
@@ -245,7 +264,9 @@ function applyPixelMosaic(sx, sy, sw, sh) {
   ctx.imageSmoothingEnabled = true;
 }
 
-// すりガラス／ぼかしモザイク（強さでぼかし量変更）
+// =====================
+// すりガラス／ぼかしモザイク
+// =====================
 function applyBlurMosaic(centerX, centerY, size, isStrongBlur) {
   const radius = size / 2;
   const strength = parseInt(mosaicStrength.value, 10); // 1〜10
