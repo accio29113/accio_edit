@@ -4,6 +4,11 @@
 console.log("app.js 読み込みOK！");
 
 // 要素取得
+// 履歴管理
+let undoStack = [];
+let redoStack = [];
+const maxHistory = 20;
+
 const imageInput = document.getElementById("imageInput");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -168,10 +173,15 @@ function getCanvasPos(evt) {
 
 function startDraw(evt) {
   if (!originalImage) return;
+
+  // 描き始める前に履歴保存
+  pushHistory();
+
   isDrawing = true;
   const pos = getCanvasPos(evt);
   paintAt(pos.x, pos.y);
 }
+
 
 function moveDraw(evt) {
   if (!isDrawing) return;
@@ -201,6 +211,8 @@ function paintAt(x, y) {
   let sy = Math.floor(y - half);
   let sw = size;
   let sh = size;
+  pushHistory();
+
 
   // キャンバス外補正
   if (sx < 0) { sw += sx; sx = 0; }
@@ -295,3 +307,51 @@ function applyBlurMosaic(centerX, centerY, size, isStrongBlur) {
 
   ctx.restore();
 }
+function pushHistory() {
+  const dataUrl = canvas.toDataURL("image/png");
+
+  undoStack.push(dataUrl);
+
+  // 履歴が多すぎたら古いの削除
+  if (undoStack.length > maxHistory) {
+    undoStack.shift();
+  }
+
+  // 新しい操作をしたら redo は消す
+  redoStack = [];
+}
+function restoreFromDataUrl(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = dataUrl;
+}
+function undo() {
+  if (undoStack.length === 0) return;
+
+  // 現在の状態を Redo に入れる
+  const current = canvas.toDataURL("image/png");
+  redoStack.push(current);
+
+  // UndoStack から最後を読み込み
+  const last = undoStack.pop();
+  restoreFromDataUrl(last);
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+
+  // 現在を Undo に保存
+  const current = canvas.toDataURL("image/png");
+  undoStack.push(current);
+
+  // RedoStack から復元
+  const next = redoStack.pop();
+  restoreFromDataUrl(next);
+}
+undoBtn.addEventListener("click", undo);
+redoBtn.addEventListener("click", redo);
+
+
