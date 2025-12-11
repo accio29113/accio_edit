@@ -354,4 +354,20 @@ function redo() {
 undoBtn.addEventListener("click", undo);
 redoBtn.addEventListener("click", redo);
 
+// Fabric.js のキャンバスに変換
+const fCanvas = new fabric.Canvas('canvas');
+
+// スタンプクリック → 生成
+document.querySelectorAll('.stamp-item').forEach(stamp => {
+  stamp.addEventListener('click', () => {
+    fabric.Image.fromURL(stamp.src, function(img) {
+      img.scale(0.3);        // 初期サイズ
+      img.left = 100;        // 仮位置
+      img.top = 100;
+      img.selectable = true; // 動かせるように
+      fCanvas.add(img);
+    });
+  });
+});
+
 
